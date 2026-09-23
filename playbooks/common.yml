@@ -1,6 +1,24 @@
 ---
 - name: Update web and NFS servers
-  hosts: all
+  hosts: nfs, webservers
+  become: true
+  tasks:
+    - name: Ensure wireshark is installed on RHEL/CentOS hosts
+      ansible.builtin.dnf:
+        name: wireshark
+        state: latest
+        use_backend: dnf4
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Ensure wireshark is installed on Debian/Ubuntu hosts
+      ansible.builtin.apt:
+        name: wireshark
+        state: latest
+        update_cache: true
+      when: ansible_facts['os_family'] == "Debian"
+
+- name: Update LB and DB servers
+  hosts: lb, db
   become: true
   tasks:
     - name: Ensure wireshark is installed on Debian/Ubuntu hosts
