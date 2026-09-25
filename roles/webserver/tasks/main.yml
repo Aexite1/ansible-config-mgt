@@ -1,5 +1,4 @@
 ---
-
 - name: Install Apache (httpd)
   ansible.builtin.dnf:
     name: httpd
@@ -17,13 +16,18 @@
     version: main
     force: true
 
-- name: Copy sub-folder content to web root (if repository nested it)
+- name: Check if nested html directory exists
+  ansible.builtin.stat:
+    path: /var/www/html/html
+  register: nested_html_folder
+
+- name: Copy sub-folder content to web root
   ansible.builtin.copy:
     src: /var/www/html/html/
     dest: /var/www/html/
     remote_src: true
     mode: '0644'
-  when: ansible_facts['stat']['/var/www/html/html'] is defined
+  when: nested_html_folder.stat.exists
 
 - name: Ensure /var/www/html/html sub-folder is removed
   ansible.builtin.file:
