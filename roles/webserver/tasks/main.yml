@@ -1,22 +1,13 @@
 ---
-- name: Install Apache (httpd), PHP, PHP-FPM, and Git
+- name: Install Apache (httpd)
   ansible.builtin.dnf:
-    name:
-      - httpd
-      - php
-      - php-fpm
-      - php-cli
-      - php-mysqlnd
-      - php-gd
-      - php-xml
-      - php-mbstring
-      - git
+    name: httpd
     state: present
 
-- name: Add /var/www/html as a safe directory for Git
-  ansible.builtin.command:
-    cmd: git config --global --add safe.directory /var/www/html
-  changed_when: false
+- name: Install Git
+  ansible.builtin.dnf:
+    name: git
+    state: present
 
 - name: Clone Tooling repository directly into web root
   ansible.builtin.git:
@@ -30,11 +21,12 @@
     path: /var/www/html/html
   register: nested_html_folder
 
-- name: Copy sub-folder content to web root if present
+- name: Copy sub-folder content to web root
   ansible.builtin.copy:
     src: /var/www/html/html/
     dest: /var/www/html/
     remote_src: true
+    mode: '0644'
   when: nested_html_folder.stat.exists
 
 - name: Ensure /var/www/html/html sub-folder is removed
@@ -42,34 +34,8 @@
     path: /var/www/html/html
     state: absent
 
-- name: Comment out database connection in functions.php to bypass DB requirement
-  ansible.builtin.replace:
-    path: /var/www/html/functions.php
-    regexp: '^\s*(\$db\s*=\s*mysqli_connect\(.*\);)'
-    replace: '// \1'
-
-- name: Set ownership and permissions for /var/www/html
-  ansible.builtin.file:
-    path: /var/www/html
-    owner: apache
-    group: apache
-    mode: '0755'
-    recurse: true
-
-- name: Apply SELinux context for Apache web files
-  ansible.builtin.file:
-    path: /var/www/html
-    setype: httpd_sys_content_t
-    recurse: true
-
-- name: Ensure PHP-FPM service is started and enabled
-  ansible.builtin.service:
-    name: php-fpm
-    state: started
-    enabled: true
-
-- name: Ensure Apache service is restarted and enabled
+- name: Ensure Apache service is started and enabled on boot
   ansible.builtin.service:
     name: httpd
-    state: restarted
+    state: started
     enabled: true
