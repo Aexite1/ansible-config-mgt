@@ -62,7 +62,7 @@
     setype: httpd_sys_content_t
     recurse: true
 
-- name: Allow httpd to connect to remote database via SELinux
+- name: Allow Apache to connect to database via SELinux
   ansible.posix.seboolean:
     name: httpd_can_network_connect_db
     state: true
