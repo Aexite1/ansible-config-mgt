@@ -1,12 +1,12 @@
 ---
-- name: Install Apache (httpd)
+- name: Install Apache (httpd), PHP, and Git
   ansible.builtin.dnf:
-    name: httpd
-    state: present
-
-- name: Install Git
-  ansible.builtin.dnf:
-    name: git
+    name:
+      - httpd
+      - php
+      - php-cli
+      - php-mysqlnd
+      - git
     state: present
 
 - name: Clone Tooling repository directly into web root
@@ -21,12 +21,11 @@
     path: /var/www/html/html
   register: nested_html_folder
 
-- name: Copy sub-folder content to web root
+- name: Copy sub-folder content to web root if present
   ansible.builtin.copy:
     src: /var/www/html/html/
     dest: /var/www/html/
     remote_src: true
-    mode: '0644'
   when: nested_html_folder.stat.exists
 
 - name: Ensure /var/www/html/html sub-folder is removed
@@ -34,8 +33,22 @@
     path: /var/www/html/html
     state: absent
 
+- name: Set ownership and permissions for /var/www/html
+  ansible.builtin.file:
+    path: /var/www/html
+    owner: apache
+    group: apache
+    mode: '0755'
+    recurse: true
+
+- name: Apply SELinux context for Apache web files
+  ansible.builtin.file:
+    path: /var/www/html
+    setype: httpd_sys_content_t
+    recurse: true
+
 - name: Ensure Apache service is started and enabled on boot
   ansible.builtin.service:
     name: httpd
-    state: started
+    state: restarted
     enabled: true
