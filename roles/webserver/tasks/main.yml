@@ -7,6 +7,9 @@
       - php-fpm
       - php-cli
       - php-mysqlnd
+      - php-gd
+      - php-xml
+      - php-mbstring
       - git
     state: present
 
