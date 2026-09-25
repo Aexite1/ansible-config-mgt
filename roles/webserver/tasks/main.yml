@@ -1,11 +1,15 @@
 ---
-- name: Install Apache (httpd), PHP, and Git
+- name: Install Apache (httpd), PHP, PHP-FPM, and Git
   ansible.builtin.dnf:
     name:
       - httpd
       - php
+      - php-fpm
       - php-cli
       - php-mysqlnd
+      - php-gd
+      - php-xml
+      - php-mbstring
       - git
     state: present
 
@@ -47,7 +51,13 @@
     setype: httpd_sys_content_t
     recurse: true
 
-- name: Ensure Apache service is started and enabled on boot
+- name: Ensure PHP-FPM service is started and enabled
+  ansible.builtin.service:
+    name: php-fpm
+    state: started
+    enabled: true
+
+- name: Ensure Apache service is restarted and enabled
   ansible.builtin.service:
     name: httpd
     state: restarted
