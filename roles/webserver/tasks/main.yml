@@ -1,4 +1,3 @@
----
 - name: Install Apache (httpd)
   ansible.builtin.dnf:
     name: httpd
@@ -26,7 +25,8 @@
     src: /var/www/html/html/
     dest: /var/www/html/
     remote_src: true
-    mode: '0644'
+    # FIX: Changed from '0644' to allow directory traversal during copy
+    mode: 'u=rwX,g=rX,o=rX'
   when: nested_html_folder.stat.exists
 
 - name: Ensure /var/www/html/html sub-folder is removed
@@ -34,8 +34,18 @@
     path: /var/www/html/html
     state: absent
 
+# FIX: Changed from copy to file module to fix permissions recursively
+- name: Apply correct ownership and permissions across web root
+  ansible.builtin.file:
+    path: /var/www/html
+    owner: apache
+    group: apache
+    recurse: yes
+    mode: 'u=rwX,g=rX,o=rX'
+
 - name: Ensure Apache service is started and enabled on boot
   ansible.builtin.service:
     name: httpd
     state: started
     enabled: true
+
