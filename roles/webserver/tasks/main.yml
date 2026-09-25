@@ -7,11 +7,13 @@
       - php-fpm
       - php-cli
       - php-mysqlnd
-      - php-gd
-      - php-xml
-      - php-mbstring
       - git
     state: present
+
+- name: Add /var/www/html as a safe directory for Git
+  ansible.builtin.command:
+    cmd: git config --global --add safe.directory /var/www/html
+  changed_when: false
 
 - name: Clone Tooling repository directly into web root
   ansible.builtin.git:
