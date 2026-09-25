@@ -1,2 +1,37 @@
 ---
-# tasks file for webserver
+
+- name: Install Apache (httpd)
+  ansible.builtin.dnf:
+    name: httpd
+    state: present
+
+- name: Install Git
+  ansible.builtin.dnf:
+    name: git
+    state: present
+
+- name: Clone Tooling repository directly into web root
+  ansible.builtin.git:
+    repo: "https://github.com/francdomain/tooling.git"
+    dest: /var/www/html
+    version: main
+    force: true
+
+- name: Copy sub-folder content to web root (if repository nested it)
+  ansible.builtin.copy:
+    src: /var/www/html/html/
+    dest: /var/www/html/
+    remote_src: true
+    mode: '0644'
+  when: ansible_facts['stat']['/var/www/html/html'] is defined
+
+- name: Ensure /var/www/html/html sub-folder is removed
+  ansible.builtin.file:
+    path: /var/www/html/html
+    state: absent
+
+- name: Ensure Apache service is started and enabled on boot
+  ansible.builtin.service:
+    name: httpd
+    state: started
+    enabled: true
