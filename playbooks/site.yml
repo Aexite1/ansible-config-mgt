@@ -1,3 +1,18 @@
 ---
-- import_playbook: ../static-assignments/common.yml
-- import_playbook: ../static-assignments/uat-webservers.yml
+- name: Include dynamic variables
+  hosts: all
+  become: true
+  tasks:
+    - name: Load dynamic environment variables
+      ansible.builtin.include_tasks: ../dynamic-assignments/env-vars.yml
+      tags:
+        - always
+
+- name: Import common baseline configuration
+  ansible.builtin.import_playbook: ../static-assignments/common.yml
+
+- name: Import UAT webservers configuration
+  ansible.builtin.import_playbook: ../static-assignments/uat-webservers.yml
+
+- name: Import loadbalancers configuration
+  ansible.builtin.import_playbook: ../static-assignments/loadbalancers.yml
