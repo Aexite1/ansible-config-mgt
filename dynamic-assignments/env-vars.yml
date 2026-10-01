@@ -1,0 +1,14 @@
+- name: Load environment variables from the first matching file
+  ansible.builtin.include_vars:
+    file: "{{ lookup('ansible.builtin.first_found', params) }}"
+  vars:
+    params:
+      files:
+        - dev.yml
+        - stage.yml
+        - prod.yml
+        - uat.yml
+      paths:
+        - "{{ playbook_dir }}/../env-vars"
+  tags:
+    - always

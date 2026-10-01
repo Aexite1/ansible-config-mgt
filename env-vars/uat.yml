@@ -1,0 +1,11 @@
+
+enable_nginx_lb: false
+enable_apache_lb: true
+load_balancer_is_required: true
+
+mysql_users:
+  - name: "webaccess"
+    host: "172.31.0.0/20"
+    password: "Admin123"
+    priv: "tooling.*:ALL"
+    plugin: "caching_sha2_password"

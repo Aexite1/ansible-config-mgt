@@ -1,0 +1,13 @@
+---
+- name: Ensure MySQL database user exists with caching_sha2_password
+  community.mysql.mysql_query:
+    login_user: root
+    login_unix_socket: "{{ mysql_socket | default('/var/run/mysqld/mysqld.sock') }}"
+    query:
+      - "CREATE USER IF NOT EXISTS '{{ item.name }}'@'{{ item.host | default('localhost') }}' IDENTIFIED WITH caching_sha2_password BY '{{ item.password }}';"
+      - "ALTER USER '{{ item.name }}'@'{{ item.host | default('localhost') }}' IDENTIFIED WITH caching_sha2_password BY '{{ item.password }}';"
+      - "GRANT ALL PRIVILEGES ON tooling.* TO '{{ item.name }}'@'{{ item.host | default('localhost') }}';"
+      - "FLUSH PRIVILEGES;"
+  loop: "{{ mysql_users }}"
+  no_log: false
+  become: true
