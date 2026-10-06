@@ -28,19 +28,16 @@ pipeline {
         }
 
         stage('Test SSH Connections') {
-            steps {
-                script {
-                    def allHosts = [
-                        'ubuntu@172.31.8.37',
-                        'ubuntu@172.31.6.182',
-                        'ec2-user@172.31.20.73',
-                        'ec2-user@172.31.31.213'
-                    ]
-
-                    sshagent(['private-key']) {
-                        allHosts.each { host ->
-                            sh "ssh -o StrictHostKeyChecking=no ${host} exit"
-                        }
+           steps {
+             script {
+                sshagent(['jenkins']) { // Using your existing Jenkins credentials ID
+                // -n redirects stdin from /dev/null to prevent interactive hanging
+                // -o BatchMode=yes disables interactive prompting completely
+                // timeout 5 forces Linux to drop the command if it lags for 5 seconds
+                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.8.37 exit"
+                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.6.182 exit"
+                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.20.73 exit"
+                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.31.213 exit"
                     }
                 }
             }
