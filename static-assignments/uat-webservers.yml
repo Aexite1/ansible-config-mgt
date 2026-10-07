@@ -1,6 +1,4 @@
 ---
-- name: Configure UAT Webservers
-  hosts: uat-webservers
-  become: true
+- hosts: uat-webservers
   roles:
-    - role: ../roles/webserver
+    - webserver
