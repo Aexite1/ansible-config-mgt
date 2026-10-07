@@ -18,7 +18,7 @@
       when: ansible_facts['os_family'] == "Debian"
 
 - name: Update LB and DB servers
-  hosts: lb, db
+  hosts: nginx, db
   become: true
   tasks:
     - name: Ensure wireshark is installed on Debian/Ubuntu hosts
