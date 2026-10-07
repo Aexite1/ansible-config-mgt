@@ -56,7 +56,7 @@ pipeline {
                         installation: 'ansible',
                         inventory: "${WORKSPACE}/inventory/${inventory}",
                         playbook: "${WORKSPACE}/playbooks/site.yml",
-                        tags: "${aparams.ansible_tags}"
+                        tags: "${params.ansible_tags}"
                     )
                 }
             }
