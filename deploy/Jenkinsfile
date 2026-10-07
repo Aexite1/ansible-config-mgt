@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     parameters {
-      string(name: 'inventory', defaultValue: 'dev',  description: 'This is the inventory file for the environment to deploy configuration')
+        string(name: 'inventory', defaultValue: 'dev.yml', description: 'This is the inventory file for the environment to deploy configuration')
     }
-
-    agent any
 
     environment {
         ANSIBLE_CONFIG = "${WORKSPACE}/deploy/ansible.cfg"
+        // 🛠️ Forces Ansible to locate your root roles directory
+        ANSIBLE_ROLES_PATH = "${WORKSPACE}/roles"
     }
 
     stages {
@@ -33,16 +33,13 @@ pipeline {
         }
 
         stage('Test SSH Connections') {
-           steps {
-             script {
-                sshagent(['private-key']) { // Using your existing Jenkins credentials ID
-                // -n redirects stdin from /dev/null to prevent interactive hanging
-                // -o BatchMode=yes disables interactive prompting completely
-                // timeout 5 forces Linux to drop the command if it lags for 5 seconds
-                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.8.37 exit"
-                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.6.182 exit"
-                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.20.73 exit"
-                sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.31.213 exit"
+            steps {
+                script {
+                    sshagent(['private-key']) { 
+                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.8.37 exit"
+                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.6.182 exit"
+                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.20.73 exit"
+                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.31.213 exit"
                     }
                 }
             }
@@ -56,8 +53,8 @@ pipeline {
                         credentialsId: 'private-key',
                         disableHostKeyChecking: true,
                         installation: 'ansible',
-                        inventory: '${WORKSPACE}/inventory/${inventory}',
-                        playbook: '${WORKSPACE}/playbooks/site.yml'
+                        inventory: "${WORKSPACE}/inventory/${inventory}", // 🛠️ Uses params syntax cleanly
+                        playbook: "${WORKSPACE}/playbooks/site.yml"
                     )
                 }
             }
