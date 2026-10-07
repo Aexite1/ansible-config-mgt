@@ -13,12 +13,20 @@
 
 - name: Import UAT webservers configuration
   ansible.builtin.import_playbook: ../static-assignments/uat-webservers.yml
+  tags:
+ - webservers
+
 
 - name: Import loadbalancers configuration
   ansible.builtin.import_playbook: ../static-assignments/loadbalancer.yml
+  tags:
+ - nginx_lb
 
 - name: Import Database configuration
   ansible.builtin.import_playbook: ../static-assignments/db-servers.yml
+  tags:
+    - db
+
 
 - name: Configure Load Balancer and Apache
   hosts: lb
