@@ -1,6 +1,6 @@
 ---
 - name: Update web and NFS servers
-  hosts: nfs, webservers
+  hosts: nfs, tooling
   become: true
   tasks:
     - name: Ensure wireshark is installed on RHEL/CentOS hosts
