@@ -29,7 +29,7 @@ pipeline {
         stage('Test SSH Connections') {
            steps {
              script {
-                sshagent(['jenkins']) { // Using your existing Jenkins credentials ID
+                sshagent(['private-key']) { // Using your existing Jenkins credentials ID
                 // -n redirects stdin from /dev/null to prevent interactive hanging
                 // -o BatchMode=yes disables interactive prompting completely
                 // timeout 5 forces Linux to drop the command if it lags for 5 seconds
