@@ -54,9 +54,9 @@ pipeline {
                         credentialsId: 'private-key',
                         disableHostKeyChecking: true,
                         installation: 'ansible',
-                        inventory: "${WORKSPACE}/inventory/${inventory}", // 🛠️ Uses params syntax cleanly
-                        playbook: "${WORKSPACE}/playbooks/site.yml"
-                        tags: "${ansible_tags}" // Uses params syntax cleanly
+                        inventory: "${WORKSPACE}/inventory/${inventory}",
+                        playbook: "${WORKSPACE}/playbooks/site.yml",
+                        tags: "${ansible_tags}"
                     )
                 }
             }
