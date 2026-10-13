@@ -3,11 +3,14 @@ Web1 ansible_host=172.31.20.73 ansible_ssh_user='ec2-user'
 Web2 ansible_host=172.31.31.213 ansible_ssh_user='ec2-user'
 
 [db]
-db-server ansible_host=172.31.8.37 ansible_ssh_user='ubuntu'
+db ansible_host=172.31.8.37 ansible_ssh_user='ubuntu'
+
+[db:vars]
+ansible_user=ec2-user
+ansible_python_interpreter=/usr/bin/python3
 
 [todo]
-todo-server ansible_host=172.31.32.115 ansible_ssh_user='ec2-user'
-
+todo ansible_host=172.31.31.213 ansible_ssh_user='ec2-user'
 
 #[nginx]
 #Nginx ansible_host=172.31.6.182 ansible_ssh_user='ubuntu'
