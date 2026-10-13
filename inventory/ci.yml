@@ -4,8 +4,17 @@
 [nginx]
 172.31.6.182
 
+[tooling]
+172.31.20.73
+172.31.31.213
+
+[db:vars]
+ansible_user=ec2-user
+ansible_python_interpreter=/usr/bin/python3.12
+
+
 [sonarqube]
 172.31.47.141
 
 [artifact_repository]
-172.31.31.213
+172.31.31.213 
