@@ -72,11 +72,17 @@
     - httpd_can_network_connect_db
   when: ansible_facts['os_family'] == 'RedHat'
 
+- name: Remove stale tooling repository paths if they exist
+  ansible.builtin.file:
+    path: /tmp/tooling_repo
+    state: absent
+
 - name: Clone tooling repository into temporary location
   ansible.builtin.git:
-    repo: https://github.com/francdomain/tooling.git
+    repo: 'https://github.com/francdomain/tooling.git'
     dest: /tmp/tooling_repo
     force: yes
+
 
 - name: Copy cloned web assets to /var/www/html
   ansible.builtin.copy:
