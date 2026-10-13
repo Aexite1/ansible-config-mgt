@@ -7,7 +7,7 @@ db ansible_host=172.31.8.37 ansible_ssh_user='ubuntu'
 
 [db:vars]
 ansible_user=ec2-user
-ansible_python_interpreter=/usr/bin/python3
+ansible_python_interpreter=/usr/bin/python3.12
 
 [todo]
 <Todo-Web-Server-Private-IP-Address>
