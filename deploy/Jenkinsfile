@@ -1,15 +1,17 @@
 pipeline {
     agent any
 
-    parameters {
-        string(name: 'inventory', defaultValue: 'dev.yml', description: 'This is the inventory file for the environment to deploy configuration')
-        string(name: 'ansible_tags', defaultValue: 'webserver', description: 'Ansible tags to run specific roles or tasks')
-    }
-
     environment {
         ANSIBLE_CONFIG = "${WORKSPACE}/deploy/ansible.cfg"
-        // 🛠️ Forces Ansible to locate your root roles directory
-        ANSIBLE_ROLES_PATH = "${WORKSPACE}/roles"
+    }
+
+    parameters {
+        string(name: 'inventory', defaultValue: 'dev', description: 'This is the inventory file for the environment to deploy configuration')
+        string(name: 'branch', defaultValue: 'main', description: 'Branch to checkout')
+        string(name: 'repo_url', defaultValue: 'https://github.com/Aexite1/ansible-config-mgt.git', description: 'Repository URL')
+        text(name: 'ssh_hosts', defaultValue: 'ubuntu@172.31.6.182\nubuntu@172.31.8.37\nec2-user@172.31.20.73\nec2-user@172.31.31.213', description: 'List of SSH hosts, one per line')
+        string(name: 'playbook_path', defaultValue: '${WORKSPACE}/playbooks/site.yml', description: 'Path to the Ansible playbook')
+        string(name: 'credentials_id', defaultValue: 'private-key', description: 'Credentials ID for SSH and Ansible')
     }
 
     stages {
@@ -23,24 +25,26 @@ pipeline {
 
         stage('Checkout SCM') {
             steps {
-                git branch: 'main', url: 'https://github.com/Aexite1/ansible-config-mgt.git'
+                git branch: "${params.branch}", url: "${params.repo_url}"
             }
         }
 
         stage('Prepare Ansible For Execution') {
             steps {
                 sh 'echo ${WORKSPACE}'
+                sh 'sed -i "3 a roles_path=${WORKSPACE}/roles" ${WORKSPACE}/deploy/ansible.cfg'
             }
         }
 
         stage('Test SSH Connections') {
             steps {
                 script {
-                    sshagent(['private-key']) { 
-                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.8.37 exit"
-                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@172.31.6.182 exit"
-                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.20.73 exit"
-                        sh "timeout 5 ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no ec2-user@172.31.31.213 exit"
+                    def allHosts = params.ssh_hosts.split('\n')
+
+                    sshagent([params.credentials_id]) {
+                        allHosts.each { host ->
+                            sh "ssh -o StrictHostKeyChecking=no ${host} exit"
+                        }
                     }
                 }
             }
@@ -48,15 +52,14 @@ pipeline {
 
         stage('Run Ansible playbook') {
             steps {
-                sshagent(['private-key']) {
+                sshagent([params.credentials_id]) {
                     ansiblePlaybook(
                         become: true,
-                        credentialsId: 'private-key',
+                        credentialsId: params.credentials_id,
                         disableHostKeyChecking: true,
                         installation: 'ansible',
-                        inventory: "${WORKSPACE}/inventory/${inventory}",
-                        playbook: "${WORKSPACE}/playbooks/site.yml",
-                        tags: "${params.ansible_tags}"
+                        inventory: "${WORKSPACE}/inventory/${params.inventory}",
+                        playbook: params.playbook_path
                     )
                 }
             }
