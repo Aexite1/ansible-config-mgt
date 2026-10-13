@@ -76,7 +76,7 @@
   ansible.builtin.git:
     repo: https://github.com/francdomain/tooling.git
     dest: /tmp/tooling_repo
-    force: true
+    force: yes
 
 - name: Copy cloned web assets to /var/www/html
   ansible.builtin.copy:
