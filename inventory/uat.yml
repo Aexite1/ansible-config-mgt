@@ -11,7 +11,7 @@
 [db_servers]
 172.31.8.37 ansible_user=ubuntu
 
-[webservers]
+[tooling]
 172.31.20.73 ansible_user=ec2-user
 172.31.31.213 ansible_user=ec2-user
 
