@@ -67,7 +67,8 @@ pipeline {
                         disableHostKeyChecking: true,
                         installation: 'ansible',
                         inventory: "${WORKSPACE}/inventory/${params.inventory}",
-                        playbook: params.playbook_path
+                        playbook: params.playbook_path,
+                        tags: params.tags
                     )
                 }
             }
