@@ -68,7 +68,8 @@ pipeline {
                         installation: 'ansible',
                         inventory: "${WORKSPACE}/inventory/${params.inventory}",
                         playbook: params.playbook_path,
-                        tags: params.tags
+                        tags: params.tags,
+                        remoteUser: 'ec2-user'
                     )
                 }
             }
