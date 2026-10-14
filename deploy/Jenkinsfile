@@ -12,6 +12,7 @@ pipeline {
         text(name: 'ssh_hosts', defaultValue: 'ubuntu@172.31.6.182\nubuntu@172.31.8.37\nec2-user@172.31.20.73\nec2-user@172.31.31.213', description: 'List of SSH hosts, one per line')
         string(name: 'playbook_path', defaultValue: '${WORKSPACE}/playbooks/site.yml', description: 'Path to the Ansible playbook')
         string(name: 'credentials_id', defaultValue: 'private-key', description: 'Credentials ID for SSH and Ansible')
+        string(name: 'tags', defaultValue: 'artifactory', description: 'Tags for the Ansible playbook')
     }
 
     stages {
