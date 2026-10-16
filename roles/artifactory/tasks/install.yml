@@ -1,10 +1,10 @@
 ---
 # tasks/install.yml (RHEL Version)
 
-- name: Install required dependencies (Java 21 & curl)
+- name: Install required dependencies (Java 17 & curl)
   ansible.builtin.dnf:
     name:
-      - java-21-openjdk
+      - java-17-openjdk
       - curl
     state: present
   become: true
