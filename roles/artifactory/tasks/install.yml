@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Optimized)
+# tasks/install.yml (RHEL Optimized with Valid System Configuration)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -80,17 +80,22 @@
     mode: '0755'
   become: true
 
-- name: Ensure system.yaml configuration file exists
-  ansible.builtin.file:
-    path: /var/opt/jfrog/artifactory/etc/system.yaml
-    state: touch
+- name: Ensure minimal valid system.yaml configuration exists
+  ansible.builtin.copy:
+    dest: /var/opt/jfrog/artifactory/etc/system.yaml
+    content: |
+      shared:
+        node:
+          name: artifactory-node-1
+    owner: root
+    group: root
     mode: '0644'
   become: true
 
 - name: Start and enable JFrog Artifactory service
   ansible.builtin.systemd:
     name: artifactory.service
-    state: started
+    state: restarted
     enabled: true
   become: true
 
