@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (Fixed Permissions & Clean Error Handling)
+# tasks/install.yml (RHEL Optimized with Recursive Ownership & Clean Handling)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -70,7 +70,7 @@
     state: present
   become: true
 
-- name: Ensure Artifactory etc directory exists with correct ownership
+- name: Ensure Artifactory etc directory exists
   ansible.builtin.file:
     path: /var/opt/jfrog/artifactory/etc
     state: directory
@@ -92,6 +92,14 @@
     owner: artifactory
     group: artifactory
     mode: '0644'
+  become: true
+
+- name: Recursively set ownership of Artifactory data and var directories
+  ansible.builtin.file:
+    path: /var/opt/jfrog/artifactory
+    owner: artifactory
+    group: artifactory
+    recurse: true
   become: true
 
 - name: Start and enable JFrog Artifactory service
