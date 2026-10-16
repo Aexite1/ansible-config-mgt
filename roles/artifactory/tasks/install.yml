@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Optimized with Valid System Configuration)
+# tasks/install.yml (RHEL Optimized with Robust OSS Configuration)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -80,13 +80,16 @@
     mode: '0755'
   become: true
 
-- name: Ensure minimal valid system.yaml configuration exists
+- name: Ensure complete valid system.yaml configuration exists for OSS
   ansible.builtin.copy:
     dest: /var/opt/jfrog/artifactory/etc/system.yaml
     content: |
       shared:
         node:
           name: artifactory-node-1
+      artifactory:
+        database:
+          type: derby
     owner: root
     group: root
     mode: '0644'
@@ -95,9 +98,13 @@
 - name: Start and enable JFrog Artifactory service
   ansible.builtin.systemd:
     name: artifactory.service
-    state: restarted
+    state: started
     enabled: true
   become: true
+
+- name: Wait for Artifactory service to initialize
+  ansible.builtin.pause:
+    seconds: 15
 
 - name: Verify status of JFrog Artifactory
   ansible.builtin.command: systemctl status artifactory.service
