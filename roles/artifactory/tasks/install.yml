@@ -1,0 +1,61 @@
+---
+# tasks/install.yml (RHEL Version)
+
+- name: Install required dependencies (Java 21 & curl)
+  ansible.builtin.dnf:
+    name:
+      - java-21-openjdk
+      - curl
+    state: present
+  become: true
+
+- name: Verify Java installation
+  ansible.builtin.command: java -version
+  register: java_version
+  ignore_errors: true
+  changed_when: false
+
+- name: Display Java version
+  ansible.builtin.debug:
+    var: java_version.stderr_lines
+
+- name: Add JFrog Artifactory YUM repository
+  ansible.builtin.yum_repository:
+    name: artifactory
+    description: JFrog Artifactory YUM repo
+    baseurl: https://releases.jfrog.io/artifactory/artifactory-rpms
+    enabled: true
+    gpgcheck: true
+    gpgkey: https://releases.jfrog.io/artifactory/api/gpg/key/public
+  become: true
+
+- name: Install JFrog Artifactory OSS
+  ansible.builtin.dnf:
+    name: jfrog-artifactory-oss
+    state: present
+  become: true
+
+- name: Ensure system.yaml configuration file exists
+  ansible.builtin.file:
+    path: /var/opt/jfrog/artifactory/etc/system.yaml
+    state: touch
+    mode: '0644'
+  become: true
+  ignore_errors: true
+
+- name: Start and enable JFrog Artifactory service
+  ansible.builtin.systemd:
+    name: artifactory.service
+    state: started
+    enabled: true
+  become: true
+
+- name: Verify status of JFrog Artifactory
+  ansible.builtin.command: systemctl status artifactory.service
+  register: artifactory_status
+  ignore_errors: true
+  changed_when: false
+
+- name: Display Artifactory service status
+  ansible.builtin.debug:
+    var: artifactory_status.stdout_lines
