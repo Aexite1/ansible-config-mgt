@@ -7,7 +7,7 @@
   changed_when: false
   become: true
 
-- name: Create swap space to prevent OOM (rc: 137) on small instances
+- name: "Create swap space to prevent OOM (rc: 137) on small instances"
   block:
     - name: Allocate 2GB swap file
       ansible.builtin.command: dd if=/dev/zero of=/swapfile bs=128M count=16
