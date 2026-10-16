@@ -69,7 +69,7 @@ pipeline {
                         inventory: "${WORKSPACE}/inventory/${params.inventory}",
                         playbook: params.playbook_path,
                         tags: params.tags,
-                        remoteUser: 'ec2-user'
+                        extras: -u "ec2-user"
                     )
                 }
             }
