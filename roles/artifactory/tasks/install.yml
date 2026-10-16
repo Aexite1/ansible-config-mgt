@@ -1,10 +1,46 @@
 ---
-# tasks/install.yml (RHEL Version)
+# tasks/install.yml (RHEL Optimized with Automated Swap & DNF Cleanup)
 
-- name: Install required dependencies (Java 17 & curl)
+- name: Check if swap exists
+  ansible.builtin.command: swapon --show
+  register: swap_check
+  changed_when: false
+  become: true
+
+- name: Create swap space to prevent OOM (rc: 137) on small instances
+  block:
+    - name: Allocate 2GB swap file
+      ansible.builtin.command: dd if=/dev/zero of=/swapfile bs=128M count=16
+      args:
+        creates: /swapfile
+      become: true
+
+    - name: Set correct permissions on swapfile
+      ansible.builtin.file:
+        path: /swapfile
+        mode: '0600'
+      become: true
+
+    - name: Make swap filesystem
+      ansible.builtin.command: mkswap /swapfile
+      when: swap_check.stdout == ""
+      become: true
+
+    - name: Enable swap
+      ansible.builtin.command: swapon /swapfile
+      when: swap_check.stdout == ""
+      become: true
+  ignore_errors: true
+
+- name: Clean DNF cache to free memory
+  ansible.builtin.command: dnf clean all
+  become: true
+  changed_when: false
+
+- name: Install required dependencies (Java 21 & curl)
   ansible.builtin.dnf:
     name:
-      - java-17-openjdk
+      - java-21-openjdk
       - curl
     state: present
   become: true
