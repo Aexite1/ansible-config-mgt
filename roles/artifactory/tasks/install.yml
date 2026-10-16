@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Optimized with Recursive Ownership & Clean Handling)
+# tasks/install.yml (With Journal Diagnostics)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -94,7 +94,7 @@
     mode: '0644'
   become: true
 
-- name: Recursively set ownership of Artifactory data and var directories
+- name: Recursively set ownership of Artifactory directories
   ansible.builtin.file:
     path: /var/opt/jfrog/artifactory
     owner: artifactory
@@ -105,21 +105,25 @@
 - name: Start and enable JFrog Artifactory service
   ansible.builtin.systemd:
     name: artifactory.service
-    state: restarted
+    state: started
     enabled: true
   become: true
+  register: service_start_result
+  ignore_errors: true
 
-- name: Wait for Artifactory service to initialize
-  ansible.builtin.pause:
-    seconds: 20
-
-- name: Verify status of JFrog Artifactory
-  ansible.builtin.systemd:
-    name: artifactory.service
-    state: started
-  register: service_status
+- name: Fetch journalctl logs if service start failed
+  ansible.builtin.command: journalctl -u artifactory.service -n 50 --no-pager
+  register: journal_logs
+  when: service_start_result is failed
+  changed_when: false
   become: true
 
-- name: Display Artifactory service status confirmation
+- name: Display journalctl logs for troubleshooting
   ansible.builtin.debug:
-    msg: "Artifactory service is successfully running and active!"
+    var: journal_logs.stdout_lines
+  when: service_start_result is failed
+
+- name: Fail explicitly if service start failed
+  ansible.builtin.fail:
+    msg: "Artifactory service failed to start. Check the journal logs above for the exact cause."
+  when: service_start_result is failed
