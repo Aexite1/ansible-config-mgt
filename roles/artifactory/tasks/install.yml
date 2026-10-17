@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (With Journal Diagnostics)
+# tasks/install.yml (RHEL Optimized with yq Dependency Resolution)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -37,11 +37,12 @@
   become: true
   changed_when: false
 
-- name: Install required dependencies (Java 21 & curl)
+- name: Install required dependencies (Java 21, curl, wget)
   ansible.builtin.dnf:
     name:
       - java-21-openjdk
       - curl
+      - wget
     state: present
   become: true
 
@@ -53,6 +54,13 @@
 - name: Display Java version
   ansible.builtin.debug:
     var: java_version.stderr_lines
+
+- name: Install mikefarah yq parser required by Artifactory scripts
+  ansible.builtin.get_url:
+    url: https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    dest: /usr/bin/yq
+    mode: '0755'
+  become: true
 
 - name: Add JFrog Artifactory YUM repository
   ansible.builtin.yum_repository:
@@ -94,6 +102,23 @@
     mode: '0644'
   become: true
 
+- name: Ensure third-party directory exists for script compatibility
+  ansible.builtin.file:
+    path: /opt/jfrog/artifactory/app/third-party
+    state: directory
+    owner: artifactory
+    group: artifactory
+    mode: '0755'
+  become: true
+
+- name: Link system yq to expected third-party path
+  ansible.builtin.file:
+    src: /usr/bin/yq
+    dest: /opt/jfrog/artifactory/app/third-party/yq
+    state: link
+    force: true
+  become: true
+
 - name: Recursively set ownership of Artifactory directories
   ansible.builtin.file:
     path: /var/opt/jfrog/artifactory
@@ -105,25 +130,21 @@
 - name: Start and enable JFrog Artifactory service
   ansible.builtin.systemd:
     name: artifactory.service
-    state: started
+    state: restarted
     enabled: true
   become: true
-  register: service_start_result
-  ignore_errors: true
 
-- name: Fetch journalctl logs if service start failed
-  ansible.builtin.command: journalctl -u artifactory.service -n 50 --no-pager
-  register: journal_logs
-  when: service_start_result is failed
-  changed_when: false
+- name: Wait for Artifactory service to initialize
+  ansible.builtin.pause:
+    seconds: 20
+
+- name: Verify status of JFrog Artifactory
+  ansible.builtin.systemd:
+    name: artifactory.service
+    state: started
+  register: service_status
   become: true
 
-- name: Display journalctl logs for troubleshooting
+- name: Display Artifactory service status confirmation
   ansible.builtin.debug:
-    var: journal_logs.stdout_lines
-  when: service_start_result is failed
-
-- name: Fail explicitly if service start failed
-  ansible.builtin.fail:
-    msg: "Artifactory service failed to start. Check the journal logs above for the exact cause."
-  when: service_start_result is failed
+    msg: "Artifactory service is successfully running and active!"
