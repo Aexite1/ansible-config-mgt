@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Optimized with yq Dependency Resolution)
+# tasks/install.yml (Complete RHEL Optimized Artifactory OSS Installation)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -111,12 +111,14 @@
     mode: '0755'
   become: true
 
-- name: Link system yq to expected third-party path
-  ansible.builtin.file:
+- name: Copy yq binary directly to Artifactory third-party path
+  ansible.builtin.copy:
     src: /usr/bin/yq
     dest: /opt/jfrog/artifactory/app/third-party/yq
-    state: link
-    force: true
+    remote_src: true
+    owner: artifactory
+    group: artifactory
+    mode: '0755'
   become: true
 
 - name: Recursively set ownership of Artifactory directories
@@ -136,7 +138,7 @@
 
 - name: Wait for Artifactory service to initialize
   ansible.builtin.pause:
-    seconds: 20
+    seconds: 25
 
 - name: Verify status of JFrog Artifactory
   ansible.builtin.systemd:
