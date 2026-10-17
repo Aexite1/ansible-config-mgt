@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (Complete RHEL Optimized Artifactory OSS Installation)
+# tasks/install.yml (Complete RHEL Optimized Artifactory OSS Installation with Java 25)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -37,14 +37,18 @@
   become: true
   changed_when: false
 
-- name: Install required dependencies (Java 21, curl, wget)
+- name: Install required dependencies (Java 25, curl, wget)
   ansible.builtin.dnf:
     name:
-      - java-21-openjdk
+      - java-25-openjdk
       - curl
       - wget
     state: present
   become: true
+  register: dnf_install
+  retries: 3
+  delay: 10
+  until: dnf_install is success
 
 - name: Verify Java installation
   ansible.builtin.command: java -version
@@ -61,6 +65,10 @@
     dest: /usr/bin/yq
     mode: '0755'
   become: true
+  register: yq_download
+  retries: 3
+  delay: 5
+  until: yq_download is success
 
 - name: Add JFrog Artifactory YUM repository
   ansible.builtin.yum_repository:
@@ -77,6 +85,10 @@
     name: jfrog-artifactory-oss
     state: present
   become: true
+  register: artifactory_install
+  retries: 3
+  delay: 10
+  until: artifactory_install is success
 
 - name: Ensure Artifactory etc directory exists
   ansible.builtin.file:
@@ -102,26 +114,26 @@
     mode: '0644'
   become: true
 
-- name: Ensure app/third-party directory exists as sibling to bin
+- name: Ensure third-party/yq directory exists to satisfy script directory check
   ansible.builtin.file:
-    path: /opt/jfrog/artifactory/app/third-party
+    path: /opt/jfrog/artifactory/app/third-party/yq
     state: directory
     owner: artifactory
     group: artifactory
     mode: '0755'
   become: true
 
-- name: Place yq directly in app/third-party/yq for script compatibility
+- name: Place yq binary inside the third-party/yq directory structure
   ansible.builtin.copy:
     src: /usr/bin/yq
-    dest: /opt/jfrog/artifactory/app/third-party/yq
+    dest: /opt/jfrog/artifactory/app/third-party/yq/yq
     remote_src: true
     owner: artifactory
     group: artifactory
     mode: '0755'
   become: true
 
-- name: Recursively set ownership of Artifactory directories
+- name: Recursively set ownership of Artifactory var directories
   ansible.builtin.file:
     path: /var/opt/jfrog/artifactory
     owner: artifactory
@@ -137,6 +149,16 @@
     recurse: true
   become: true
 
+- name: Force filesystem sync to ensure file writes are committed
+  ansible.builtin.command: sync
+  become: true
+  changed_when: false
+
+- name: Reload systemd daemon to register service states cleanly
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
 - name: Start and enable JFrog Artifactory service
   ansible.builtin.systemd:
     name: artifactory.service
@@ -146,7 +168,7 @@
 
 - name: Wait for Artifactory service to initialize
   ansible.builtin.pause:
-    seconds: 25
+    seconds: 30
 
 - name: Verify status of JFrog Artifactory
   ansible.builtin.systemd:
