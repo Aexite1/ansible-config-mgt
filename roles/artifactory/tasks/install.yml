@@ -102,7 +102,7 @@
     mode: '0644'
   become: true
 
-- name: Ensure third-party directory exists for script compatibility
+- name: Ensure app/third-party directory exists as sibling to bin
   ansible.builtin.file:
     path: /opt/jfrog/artifactory/app/third-party
     state: directory
@@ -111,7 +111,7 @@
     mode: '0755'
   become: true
 
-- name: Copy yq binary directly to Artifactory third-party path
+- name: Place yq directly in app/third-party/yq for script compatibility
   ansible.builtin.copy:
     src: /usr/bin/yq
     dest: /opt/jfrog/artifactory/app/third-party/yq
@@ -124,6 +124,14 @@
 - name: Recursively set ownership of Artifactory directories
   ansible.builtin.file:
     path: /var/opt/jfrog/artifactory
+    owner: artifactory
+    group: artifactory
+    recurse: true
+  become: true
+
+- name: Recursively set ownership of app installation directory
+  ansible.builtin.file:
+    path: /opt/jfrog/artifactory
     owner: artifactory
     group: artifactory
     recurse: true
