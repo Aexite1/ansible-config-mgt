@@ -66,7 +66,7 @@ pipeline {
                         disableHostKeyChecking: true,
                         installation: 'ansible',
                         inventory: "${WORKSPACE}/inventory/${params.inventory}",
-                        playbook: "${WORKSPACE}/${params.playbook_path}",
+                        playbook: params.playbook_path,
                         tags: params.tags,
                         extras: "-u ec2-user"
                     )
