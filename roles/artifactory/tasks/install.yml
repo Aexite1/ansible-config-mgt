@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (Robust RHEL Artifactory OSS Installation with Safe Service Management)
+# tasks/install.yml (Complete RHEL Artifactory OSS Installation with Explicit Java 21 Home & Safeguards)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -40,7 +40,7 @@
 - name: Install required dependencies (Java, curl, wget)
   ansible.builtin.dnf:
     name:
-      - java-25-openjdk
+      - java-21-openjdk
       - curl
       - wget
     state: present
@@ -117,13 +117,15 @@
     mode: '0400'
   become: true
 
-- name: Ensure complete valid system.yaml configuration exists for OSS (Derby)
+- name: Ensure complete valid system.yaml configuration exists for OSS (Derby with Explicit Java Home)
   ansible.builtin.copy:
     dest: /var/opt/jfrog/artifactory/etc/system.yaml
     content: |
       shared:
         node:
           name: artifactory-node-1
+        java:
+          home: "/usr/lib/jvm/java-21-openjdk"
       artifactory:
         database:
           type: derby
