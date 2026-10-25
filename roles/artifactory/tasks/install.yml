@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Artifactory OSS Installation with Java 21 LTS Compatibility)
+# tasks/install.yml (RHEL Artifactory OSS Installation with Standard Package and Java 21)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -80,9 +80,9 @@
     gpgkey: https://releases.jfrog.io/artifactory/api/gpg/key/public
   become: true
 
-- name: Install Java 21-compatible JFrog Artifactory OSS Version (e.g., 7.90.x or stable release)
+- name: Install JFrog Artifactory OSS
   ansible.builtin.dnf:
-    name: jfrog-artifactory-oss-7.90.11  # Pins to a version fully compatible with Java 21
+    name: jfrog-artifactory-oss
     state: present
   become: true
   register: artifactory_install
@@ -123,7 +123,7 @@
     - /var/opt/jfrog/artifactory/etc/security/master.key
     - /var/opt/jfrog/artifactory/etc/security/join.key
 
-- name: Ensure complete valid system.yaml configuration exists for OSS (Java 21 Home)
+- name: Ensure complete valid system.yaml configuration exists for OSS (Explicit Java 21 Home)
   ansible.builtin.copy:
     dest: /var/opt/jfrog/artifactory/etc/system.yaml
     content: |
