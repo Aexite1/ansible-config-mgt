@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Artifactory OSS Installation with Standard Package and Java 21)
+# tasks/install.yml (RHEL Artifactory OSS Installation - Fresh Deployment Ready)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
