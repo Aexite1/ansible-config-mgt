@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (Optimized RHEL Artifactory OSS Installation)
+# tasks/install.yml (Robust RHEL Artifactory OSS Installation with Key Generation & Memory Safeguards)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -27,7 +27,7 @@
       ansible.builtin.command: swapon /swapfile
       when: swap_check.stdout == ""
   rescue:
-    - name: Warn if swap creation fails (non-fatal on systems with strict restrictions)
+    - name: Warn if swap creation fails (non-fatal)
       ansible.builtin.debug:
         msg: "Swap creation skipped or failed, proceeding with installation anyway."
   become: true
@@ -90,13 +90,31 @@
   delay: 10
   until: artifactory_install is success
 
-- name: Ensure Artifactory etc directory exists
+- name: Ensure Artifactory etc and security directories exist
   ansible.builtin.file:
-    path: /var/opt/jfrog/artifactory/etc
+    path: "{{ item }}"
     state: directory
     owner: artifactory
     group: artifactory
     mode: '0755'
+  become: true
+  loop:
+    - /var/opt/jfrog/artifactory/etc
+    - /var/opt/jfrog/artifactory/etc/security
+
+- name: Generate master.key if it does not exist (Critical for Artifactory 7 boot)
+  ansible.builtin.shell: |
+    if [ ! -f /var/opt/jfrog/artifactory/etc/security/master.key ]; then
+      openssl rand -hex 32 > /var/opt/jfrog/artifactory/etc/security/master.key
+    fi
+  become: true
+
+- name: Ensure correct ownership on security directory and master.key
+  ansible.builtin.file:
+    path: /var/opt/jfrog/artifactory/etc/security/master.key
+    owner: artifactory
+    group: artifactory
+    mode: '0400'
   become: true
 
 - name: Ensure complete valid system.yaml configuration exists for OSS (Derby)
@@ -144,6 +162,11 @@
     - /var/opt/jfrog/artifactory
     - /opt/jfrog/artifactory
 
+- name: Kill any rogue Java/Artifactory processes holding ports
+  ansible.builtin.shell: pkill -f artifactory || true
+  become: true
+  changed_when: false
+
 - name: Reload systemd daemon to register service states cleanly
   ansible.builtin.systemd:
     daemon_reload: true
@@ -159,8 +182,8 @@
 - name: Wait for Artifactory service to initialize ports
   ansible.builtin.wait_for:
     port: 8082
-    delay: 10
-    timeout: 60
+    delay: 15
+    timeout: 120
   become: true
 
 - name: Verify status of JFrog Artifactory service
