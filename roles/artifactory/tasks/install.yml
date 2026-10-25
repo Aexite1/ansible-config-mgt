@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (Robust RHEL Artifactory OSS Installation with Key Generation & Memory Safeguards)
+# tasks/install.yml (Robust RHEL Artifactory OSS Installation with Safe Service Management)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -162,9 +162,12 @@
     - /var/opt/jfrog/artifactory
     - /opt/jfrog/artifactory
 
-- name: Kill any rogue Java/Artifactory processes holding ports
-  ansible.builtin.shell: pkill -f artifactory || true
+- name: Ensure existing Artifactory service is stopped cleanly
+  ansible.builtin.systemd:
+    name: artifactory.service
+    state: stopped
   become: true
+  failed_when: false
   changed_when: false
 
 - name: Reload systemd daemon to register service states cleanly
