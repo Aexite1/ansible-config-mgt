@@ -10,7 +10,7 @@ pipeline {
         string(name: 'branch', defaultValue: 'main', description: 'Branch to checkout')
         string(name: 'repo_url', defaultValue: 'https://github.com/Aexite1/ansible-config-mgt.git', description: 'Repository URL')
         text(name: 'ssh_hosts', defaultValue: 'ubuntu@172.31.6.182\nubuntu@172.31.8.37\nec2-user@172.31.20.73\nec2-user@172.31.31.213', description: 'List of SSH hosts, one per line')
-        string(name: 'playbook_path', defaultValue: '${WORKSPACE}/playbooks/site.yml', description: 'Path to the Ansible playbook')
+        string(name: 'playbook_path', defaultValue: 'playbooks/site.yml', description: 'Path to the Ansible playbook relative to the workspace')
         string(name: 'credentials_id', defaultValue: 'private-key', description: 'Credentials ID for SSH and Ansible')
         string(name: 'tags', defaultValue: 'artifactory', description: 'Tags for the Ansible playbook')
     }
@@ -30,17 +30,16 @@ pipeline {
             }
         }
 
-      stage('Prepare Ansible For Execution') {
-        steps {
-         sh 'echo ${WORKSPACE}'
-          // Use sed to replace roles_path if it exists, or append it if it doesn't
-         sh '''
-            if grep -q "roles_path" ${WORKSPACE}/deploy/ansible.cfg; then
-                sed -i "s#^roles_path.*#roles_path=${WORKSPACE}/roles#" ${WORKSPACE}/deploy/ansible.cfg
-            else
-                echo "roles_path=${WORKSPACE}/roles" >> ${WORKSPACE}/deploy/ansible.cfg
-            fi
-        '''
+        stage('Prepare Ansible For Execution') {
+            steps {
+                sh 'echo ${WORKSPACE}'
+                sh '''
+                    if grep -q "roles_path" ${WORKSPACE}/deploy/ansible.cfg; then
+                        sed -i "s#^roles_path.*#roles_path=${WORKSPACE}/roles#" ${WORKSPACE}/deploy/ansible.cfg
+                    else
+                        echo "roles_path=${WORKSPACE}/roles" >> ${WORKSPACE}/deploy/ansible.cfg
+                    fi
+                '''.stripIndent()
             }
         }
 
@@ -67,7 +66,7 @@ pipeline {
                         disableHostKeyChecking: true,
                         installation: 'ansible',
                         inventory: "${WORKSPACE}/inventory/${params.inventory}",
-                        playbook: params.playbook_path,
+                        playbook: "${WORKSPACE}/${params.playbook_path}",
                         tags: params.tags,
                         extras: "-u ec2-user"
                     )

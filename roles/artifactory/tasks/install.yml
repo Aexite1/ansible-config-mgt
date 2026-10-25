@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (Complete RHEL Optimized Artifactory OSS Installation with Java 25)
+# tasks/install.yml (Optimized RHEL Artifactory OSS Installation)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -7,37 +7,37 @@
   changed_when: false
   become: true
 
-- name: "Create swap space to prevent OOM (rc: 137) on small instances"
+- name: Create swap space to prevent OOM on small instances
   block:
     - name: Allocate 2GB swap file
       ansible.builtin.command: dd if=/dev/zero of=/swapfile bs=128M count=16
       args:
         creates: /swapfile
-      become: true
 
     - name: Set correct permissions on swapfile
       ansible.builtin.file:
         path: /swapfile
         mode: '0600'
-      become: true
 
     - name: Make swap filesystem
       ansible.builtin.command: mkswap /swapfile
       when: swap_check.stdout == ""
-      become: true
 
     - name: Enable swap
       ansible.builtin.command: swapon /swapfile
       when: swap_check.stdout == ""
-      become: true
-  ignore_errors: true
+  rescue:
+    - name: Warn if swap creation fails (non-fatal on systems with strict restrictions)
+      ansible.builtin.debug:
+        msg: "Swap creation skipped or failed, proceeding with installation anyway."
+  become: true
 
 - name: Clean DNF cache to free memory
   ansible.builtin.command: dnf clean all
   become: true
   changed_when: false
 
-- name: Install required dependencies (Java 25, curl, wget)
+- name: Install required dependencies (Java, curl, wget)
   ansible.builtin.dnf:
     name:
       - java-25-openjdk
@@ -99,7 +99,7 @@
     mode: '0755'
   become: true
 
-- name: Ensure complete valid system.yaml configuration exists for OSS
+- name: Ensure complete valid system.yaml configuration exists for OSS (Derby)
   ansible.builtin.copy:
     dest: /var/opt/jfrog/artifactory/etc/system.yaml
     content: |
@@ -133,26 +133,16 @@
     mode: '0755'
   become: true
 
-- name: Recursively set ownership of Artifactory var directories
+- name: Recursively set ownership of Artifactory var and app directories
   ansible.builtin.file:
-    path: /var/opt/jfrog/artifactory
+    path: "{{ item }}"
     owner: artifactory
     group: artifactory
     recurse: true
   become: true
-
-- name: Recursively set ownership of app installation directory
-  ansible.builtin.file:
-    path: /opt/jfrog/artifactory
-    owner: artifactory
-    group: artifactory
-    recurse: true
-  become: true
-
-- name: Force filesystem sync to ensure file writes are committed
-  ansible.builtin.command: sync
-  become: true
-  changed_when: false
+  loop:
+    - /var/opt/jfrog/artifactory
+    - /opt/jfrog/artifactory
 
 - name: Reload systemd daemon to register service states cleanly
   ansible.builtin.systemd:
@@ -166,11 +156,14 @@
     enabled: true
   become: true
 
-- name: Wait for Artifactory service to initialize
-  ansible.builtin.pause:
-    seconds: 30
+- name: Wait for Artifactory service to initialize ports
+  ansible.builtin.wait_for:
+    port: 8082
+    delay: 10
+    timeout: 60
+  become: true
 
-- name: Verify status of JFrog Artifactory
+- name: Verify status of JFrog Artifactory service
   ansible.builtin.systemd:
     name: artifactory.service
     state: started
