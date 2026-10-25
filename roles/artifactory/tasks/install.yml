@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (Complete RHEL Artifactory OSS Installation with Explicit Java 21 Home & Safeguards)
+# tasks/install.yml (Complete RHEL Artifactory OSS Installation with Java 25)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -37,10 +37,10 @@
   become: true
   changed_when: false
 
-- name: Install required dependencies (Java, curl, wget)
+- name: Install required dependencies (Java 25, curl, wget)
   ansible.builtin.dnf:
     name:
-      - java-21-openjdk
+      - java-25-openjdk
       - curl
       - wget
     state: present
@@ -102,22 +102,28 @@
     - /var/opt/jfrog/artifactory/etc
     - /var/opt/jfrog/artifactory/etc/security
 
-- name: Generate master.key if it does not exist (Critical for Artifactory 7 boot)
+- name: Generate master.key and join.key if they do not exist
   ansible.builtin.shell: |
     if [ ! -f /var/opt/jfrog/artifactory/etc/security/master.key ]; then
       openssl rand -hex 32 > /var/opt/jfrog/artifactory/etc/security/master.key
     fi
+    if [ ! -f /var/opt/jfrog/artifactory/etc/security/join.key ]; then
+      openssl rand -hex 32 > /var/opt/jfrog/artifactory/etc/security/join.key
+    fi
   become: true
 
-- name: Ensure correct ownership on security directory and master.key
+- name: Ensure correct ownership and permissions on security keys
   ansible.builtin.file:
-    path: /var/opt/jfrog/artifactory/etc/security/master.key
+    path: "{{ item }}"
     owner: artifactory
     group: artifactory
     mode: '0400'
   become: true
+  loop:
+    - /var/opt/jfrog/artifactory/etc/security/master.key
+    - /var/opt/jfrog/artifactory/etc/security/join.key
 
-- name: Ensure complete valid system.yaml configuration exists for OSS (Derby with Explicit Java Home)
+- name: Ensure complete valid system.yaml configuration exists for OSS (Explicit Java 25 Home)
   ansible.builtin.copy:
     dest: /var/opt/jfrog/artifactory/etc/system.yaml
     content: |
@@ -125,7 +131,7 @@
         node:
           name: artifactory-node-1
         java:
-          home: "/usr/lib/jvm/java-21-openjdk"
+          home: "/usr/lib/jvm/java-25-openjdk"
       artifactory:
         database:
           type: derby
