@@ -17,4 +17,4 @@
 #172.31.47.141
 
 [artifactory]
-artifactory 172.31.17.215 ansible_ssh_user='ec2-user'
+172.31.17.215 ansible_ssh_user='ec2-user'

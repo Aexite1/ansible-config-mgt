@@ -1,9 +1,9 @@
 [nginx]
-Nginx ansible_host=172.31.6.182 ansible_ssh_user='ubuntu'
+nginx ansible_host=172.31.6.182 ansible_ssh_user='ubuntu'
 
 [tooling]
 tooling ansible_host=172.31.20.73 ansible_ssh_user='ec2-user'
-tooling ansible_host=172.31.31.213 ansible_ssh_user='ec2-user'
+tooling ansible_host=172.31.17.215 ansible_ssh_user='ec2-user'
 
 [db]
 db ansible_host=172.31.8.37 ansible_ssh_user='ubuntu'
