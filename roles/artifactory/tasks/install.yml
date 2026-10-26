@@ -189,13 +189,6 @@
     enabled: true
   become: true
 
-- name: Wait for Artifactory service to initialize ports (extended timeout for first boot)
-  ansible.builtin.wait_for:
-    port: 8082
-    delay: 15
-    timeout: 300
-  become: true
-
 - name: Verify status of JFrog Artifactory service
   ansible.builtin.systemd:
     name: artifactory.service
