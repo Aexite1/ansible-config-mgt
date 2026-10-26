@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Artifactory OSS Installation - Fresh Deployment Ready)
+# tasks/install.yml (RHEL Artifactory OSS Installation - Robust Single-Node Configuration)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -123,15 +123,22 @@
     - /var/opt/jfrog/artifactory/etc/security/master.key
     - /var/opt/jfrog/artifactory/etc/security/join.key
 
-- name: Ensure complete valid system.yaml configuration exists for OSS (Explicit Java 21 Home)
+- name: Ensure complete valid system.yaml configuration exists for OSS (Robust Single-Node Setup)
   ansible.builtin.copy:
     dest: /var/opt/jfrog/artifactory/etc/system.yaml
     content: |
       shared:
         node:
-          name: artifactory-node-1
+          name: "artifactory-node-1"
+          ip: "127.0.0.1"
         java:
           home: "/usr/lib/jvm/java-21-openjdk"
+      router:
+        node:
+          port: 8046
+      access:
+        security:
+          useExternalTopology: true
       artifactory:
         database:
           type: derby
@@ -190,11 +197,11 @@
     enabled: true
   become: true
 
-- name: Wait for Artifactory service to initialize ports
+- name: Wait for Artifactory service to initialize ports (extended timeout for first boot)
   ansible.builtin.wait_for:
     port: 8082
     delay: 15
-    timeout: 120
+    timeout: 300
   become: true
 
 - name: Verify status of JFrog Artifactory service
