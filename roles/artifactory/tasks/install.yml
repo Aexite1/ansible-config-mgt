@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Artifactory OSS Installation - Robust Single-Node Configuration)
+# tasks/install.yml (RHEL Artifactory OSS Installation - Final Permission Fix)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -102,7 +102,7 @@
     - /var/opt/jfrog/artifactory/etc
     - /var/opt/jfrog/artifactory/etc/security
 
-- name: Generate master.key and join.key if they do not exist
+- name: Generate master.key and join.key with correct ownership
   ansible.builtin.shell: |
     if [ ! -f /var/opt/jfrog/artifactory/etc/security/master.key ]; then
       openssl rand -hex 32 > /var/opt/jfrog/artifactory/etc/security/master.key
@@ -110,18 +110,10 @@
     if [ ! -f /var/opt/jfrog/artifactory/etc/security/join.key ]; then
       openssl rand -hex 32 > /var/opt/jfrog/artifactory/etc/security/join.key
     fi
+    chown -R artifactory:artifactory /var/opt/jfrog/artifactory/etc/security
+    chmod 700 /var/opt/jfrog/artifactory/etc/security
+    chmod 400 /var/opt/jfrog/artifactory/etc/security/*.key
   become: true
-
-- name: Ensure correct ownership and permissions on security keys
-  ansible.builtin.file:
-    path: "{{ item }}"
-    owner: artifactory
-    group: artifactory
-    mode: '0400'
-  become: true
-  loop:
-    - /var/opt/jfrog/artifactory/etc/security/master.key
-    - /var/opt/jfrog/artifactory/etc/security/join.key
 
 - name: Ensure complete valid system.yaml configuration exists for OSS (Robust Single-Node Setup)
   ansible.builtin.copy:
