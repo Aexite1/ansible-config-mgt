@@ -1,5 +1,5 @@
 ---
-# tasks/install.yml (RHEL Artifactory OSS Installation - Final Permission Fix)
+# tasks/install.yml (RHEL Artifactory OSS Installation - Complete Final Version)
 
 - name: Check if swap exists
   ansible.builtin.command: swapon --show
@@ -122,7 +122,7 @@
       shared:
         node:
           name: "artifactory-node-1"
-          ip: "127.0.0.1"
+          ip: "0.0.0.0"
         java:
           home: "/usr/lib/jvm/java-21-openjdk"
       router:
@@ -205,4 +205,4 @@
 
 - name: Display Artifactory service status confirmation
   ansible.builtin.debug:
-    msg: "Artifactory service is successfully running and active!"
+    msg: "Artifactory service is successfully running and active!"  
