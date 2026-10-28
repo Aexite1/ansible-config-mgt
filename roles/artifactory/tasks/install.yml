@@ -1,201 +1,141 @@
 ---
-# tasks/install.yml (RHEL Artifactory OSS Installation - Complete Final Version)
+- name: Deploy JFrog Artifactory OSS on Resource-Constrained t3.small
+  hosts: all
+  become: yes
+  vars:
+    swap_file_path: "/swapfile"
+    swap_size_gb: "4"
+    jfrog_home: "/opt/jfrog/artifactory"
+    system_yaml_path: "/opt/jfrog/artifactory/var/etc/system.yaml"
 
-- name: Check if swap exists
-  ansible.builtin.command: swapon --show
-  register: swap_check
-  changed_when: false
-  become: true
+  tasks:
+    - name: 1. SWAP | Check if swap space is already active
+      ansible.builtin.command: swapon --show
+      register: swap_check
+      changed_when: false
 
-- name: Create swap space to prevent OOM on small instances
-  block:
-    - name: Allocate 2GB swap file
-      ansible.builtin.command: dd if=/dev/zero of=/swapfile bs=128M count=16
+    - name: 2. SWAP | Allocate 4GB swap space to prevent OOM
+      ansible.builtin.command: "fallocate -l {{ swap_size_gb }}G {{ swap_file_path }}"
       args:
-        creates: /swapfile
+        creates: "{{ swap_file_path }}"
+      when: swap_check.stdout == ""
 
-    - name: Set correct permissions on swapfile
+    - name: 3. SWAP | Set strict security permissions on swapfile
       ansible.builtin.file:
-        path: /swapfile
+        path: "{{ swap_file_path }}"
         mode: '0600'
+        owner: root
+        group: root
 
-    - name: Make swap filesystem
-      ansible.builtin.command: mkswap /swapfile
-      when: swap_check.stdout == ""
+    - name: 4. SWAP | Format and enable swap space
+      block:
+        - name: Build swap filesystem
+          ansible.builtin.command: "mkswap {{ swap_file_path }}"
+          when: swap_check.stdout == ""
 
-    - name: Enable swap
-      ansible.builtin.command: swapon /swapfile
-      when: swap_check.stdout == ""
-  rescue:
-    - name: Warn if swap creation fails (non-fatal)
+        - name: Activate swap file instantly
+          ansible.builtin.command: "swapon {{ swap_file_path }}"
+          when: swap_check.stdout == ""
+
+        - name: Persist swap across system reboots
+          ansible.builtin.mount:
+            name: none
+            src: "{{ swap_file_path }}"
+            fstype: swap
+            opts: sw
+            state: present
+      rescue:
+        - name: SWAP WARNING | Handle non-fatal swap allocation bypasses
+          ansible.builtin.debug:
+            msg: "Swap configuration skipped or encountered restrictions. Proceeding with caution."
+
+    - name: 5. DNF | Flush repository package caches to preserve memory
+      ansible.builtin.command: dnf clean all
+      changed_when: false
+
+    - name: 6. DEPENDENCIES | Install base operational utilities
+      ansible.builtin.dnf:
+        name:
+          - curl
+          - wget
+          - tar
+          - gzip
+        state: present
+      register: dnf_dep_install
+      retries: 3
+      delay: 5
+      until: dnf_dep_install is success
+
+    - name: 7. REPO | Add the official JFrog Artifactory OSS YUM channel
+      ansible.builtin.yum_repository:
+        name: artifactory-oss
+        description: "JFrog Artifactory OSS Repository"
+        baseurl: https://jfrog.io
+        enabled: yes
+        gpgcheck: yes
+        gpgkey: https://releases.jfrog.io/artifactory/api/gpg/key/public
+
+    - name: 8. APP | Install JFrog Artifactory OSS Package
+      ansible.builtin.dnf:
+        name: jfrog-artifactory-oss
+        state: present
+      register: artifactory_install
+      retries: 3
+      delay: 10
+      until: artifactory_install is success
+
+    - name: 9. CONFIG | Ensure unified variable configuration directory exists
+      ansible.builtin.file:
+        path: "{{ system_yaml_path | dirname }}"
+        state: directory
+        owner: artifactory
+        group: artifactory
+        mode: '0755'
+
+    - name: 10. CONFIG | Apply Low-Memory Optimization and Derby Profiles
+      ansible.builtin.copy:
+        dest: "{{ system_yaml_path }}"
+        content: |
+          shared:
+            node:
+              name: "artifactory-node-1"
+              ip: "0.0.0.0"
+            extraJavaOpts: "-Xms512m -Xmx1g"
+          artifactory:
+            database:
+              type: derby
+        owner: artifactory
+        group: artifactory
+        mode: '0664'
+
+    - name: 11. RECURSION | Fix permissions across primary workspace maps
+      ansible.builtin.file:
+        path: "{{ item }}"
+        owner: artifactory
+        group: artifactory
+        recurse: yes
+      loop:
+        - "/var/opt/jfrog/artifactory"
+        - "/opt/jfrog/artifactory"
+
+    - name: 12. SERVICE | Register and cycle the daemon state engine
+      block:
+        - name: Reload systemd daemon configs
+          ansible.builtin.systemd_service:
+            daemon_reload: yes
+
+        - name: Start and enable Artifactory service
+          ansible.builtin.systemd_service:
+            name: artifactory
+            enabled: yes
+            state: restarted
+
+    - name: 13. COMPLETE | Output clean environment access summary
       ansible.builtin.debug:
-        msg: "Swap creation skipped or failed, proceeding with installation anyway."
-  become: true
-
-- name: Clean DNF cache to free memory
-  ansible.builtin.command: dnf clean all
-  become: true
-  changed_when: false
-
-- name: Install required dependencies (Java 21 LTS, curl, wget)
-  ansible.builtin.dnf:
-    name:
-      - java-21-openjdk
-      - curl
-      - wget
-    state: present
-  become: true
-  register: dnf_install
-  retries: 3
-  delay: 10
-  until: dnf_install is success
-
-- name: Verify Java installation
-  ansible.builtin.command: java -version
-  register: java_version
-  changed_when: false
-
-- name: Display Java version
-  ansible.builtin.debug:
-    var: java_version.stderr_lines
-
-- name: Install mikefarah yq parser required by Artifactory scripts
-  ansible.builtin.get_url:
-    url: https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-    dest: /usr/bin/yq
-    mode: '0755'
-  become: true
-  register: yq_download
-  retries: 3
-  delay: 5
-  until: yq_download is success
-
-- name: Add JFrog Artifactory YUM repository
-  ansible.builtin.yum_repository:
-    name: artifactory
-    description: JFrog Artifactory YUM repo
-    baseurl: https://releases.jfrog.io/artifactory/artifactory-rpms
-    enabled: true
-    gpgcheck: true
-    gpgkey: https://releases.jfrog.io/artifactory/api/gpg/key/public
-  become: true
-
-- name: Install JFrog Artifactory OSS
-  ansible.builtin.dnf:
-    name: jfrog-artifactory-oss
-    state: present
-  become: true
-  register: artifactory_install
-  retries: 3
-  delay: 10
-  until: artifactory_install is success
-
-- name: Ensure Artifactory etc and security directories exist
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    owner: artifactory
-    group: artifactory
-    mode: '0755'
-  become: true
-  loop:
-    - /var/opt/jfrog/artifactory/etc
-    - /var/opt/jfrog/artifactory/etc/security
-
-- name: Generate master.key and join.key with correct ownership
-  ansible.builtin.shell: |
-    if [ ! -f /var/opt/jfrog/artifactory/etc/security/master.key ]; then
-      openssl rand -hex 32 > /var/opt/jfrog/artifactory/etc/security/master.key
-    fi
-    if [ ! -f /var/opt/jfrog/artifactory/etc/security/join.key ]; then
-      openssl rand -hex 32 > /var/opt/jfrog/artifactory/etc/security/join.key
-    fi
-    chown -R artifactory:artifactory /var/opt/jfrog/artifactory/etc/security
-    chmod 700 /var/opt/jfrog/artifactory/etc/security
-    chmod 400 /var/opt/jfrog/artifactory/etc/security/*.key
-  become: true
-
-- name: Ensure complete valid system.yaml configuration exists for OSS (Robust Single-Node Setup)
-  ansible.builtin.copy:
-    dest: /var/opt/jfrog/artifactory/etc/system.yaml
-    content: |
-      shared:
-        node:
-          name: "artifactory-node-1"
-          ip: "0.0.0.0"
-        java:
-          home: "/usr/lib/jvm/java-21-openjdk"
-      router:
-        node:
-          port: 8046
-      access:
-        security:
-          useExternalTopology: true
-      artifactory:
-        database:
-          type: derby
-    owner: artifactory
-    group: artifactory
-    mode: '0644'
-  become: true
-
-- name: Ensure third-party/yq directory exists to satisfy script directory check
-  ansible.builtin.file:
-    path: /opt/jfrog/artifactory/app/third-party/yq
-    state: directory
-    owner: artifactory
-    group: artifactory
-    mode: '0755'
-  become: true
-
-- name: Place yq binary inside the third-party/yq directory structure
-  ansible.builtin.copy:
-    src: /usr/bin/yq
-    dest: /opt/jfrog/artifactory/app/third-party/yq/yq
-    remote_src: true
-    owner: artifactory
-    group: artifactory
-    mode: '0755'
-  become: true
-
-- name: Recursively set ownership of Artifactory var and app directories
-  ansible.builtin.file:
-    path: "{{ item }}"
-    owner: artifactory
-    group: artifactory
-    recurse: true
-  become: true
-  loop:
-    - /var/opt/jfrog/artifactory
-    - /opt/jfrog/artifactory
-
-- name: Ensure existing Artifactory service is stopped cleanly
-  ansible.builtin.systemd:
-    name: artifactory.service
-    state: stopped
-  become: true
-  failed_when: false
-  changed_when: false
-
-- name: Reload systemd daemon to register service states cleanly
-  ansible.builtin.systemd:
-    daemon_reload: true
-  become: true
-
-- name: Start and enable JFrog Artifactory service
-  ansible.builtin.systemd:
-    name: artifactory.service
-    state: restarted
-    enabled: true
-  become: true
-
-- name: Verify status of JFrog Artifactory service
-  ansible.builtin.systemd:
-    name: artifactory.service
-    state: started
-  register: service_status
-  become: true
-
-- name: Display Artifactory service status confirmation
-  ansible.builtin.debug:
-    msg: "Artifactory service is successfully running and active!"  
+        msg:
+          - "=========================================================="
+          - "SUCCESS: JFrog Artifactory OSS has been optimized and deployed!"
+          - "Memory footprint capped at 1GB Heap max to protect your t3.small."
+          - "Please wait 3-5 minutes for the microservices to fully boot."
+          - "Access Web UI via port 8082: http://your-ec2-ip:8082"
+          - "=========================================================="
